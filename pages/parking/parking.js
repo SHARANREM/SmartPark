@@ -34,12 +34,7 @@ let slotsData = {};  // will store firebase data
 
 // Tech building (type 1)
 const parkingRef = ref(db, "parking/slots");
-onValue(parkingRef, (snapshot) => {
-  if (currentType === 1) {
-    slotsData = snapshot.val() || {};
-    renderSlots(1);
-  }
-});
+
 
 // Hospital (type 2)
 const hospitalRef = ref(db, "CCTV_parking/slots");
@@ -49,6 +44,59 @@ onValue(hospitalRef, (snapshot) => {
     renderSlots(2);
   }
 });
+
+let slotsDatas = {}; // old snapshot
+
+onValue(parkingRef, (snapshot) => {
+  if (currentType === 1) {
+    const newData = snapshot.val() || {};
+
+    // Compare new vs old
+    for (let key in newData) {
+      const prevStatus = slotsDatas[key]?.status;
+      const newStatus = newData[key]?.status;
+
+      if (prevStatus === "booked" && newStatus === "occupied") {
+        handleBookingVerification(key, newData[key]);
+      }
+    }
+
+    // 🔹 Update both global storage
+    slotsDatas = newData;
+    slotsData = newData;   // <---- missing line (this fixes live updates!)
+
+    renderSlots(1);
+  }
+});
+
+
+function handleBookingVerification(slotKey, slotInfo) {
+  const localBookingId = localStorage.getItem("bookingId");
+  const localSlot = localStorage.getItem("bookingSlot");
+
+  if (slotInfo.bookedById === localBookingId && slotKey === localSlot) {
+    const confirmUser = confirm(`We detected your slot ${slotKey} is now occupied.\nIs this you?`);
+    if (!confirmUser) {
+      // If user says "Not me", raise SOS
+      raiseSOS(slotKey, slotInfo);
+    }
+  } else {
+    // If mismatch in ID → automatic SOS
+    raiseSOS(slotKey, slotInfo);
+  }
+}
+
+function raiseSOS(slotKey, slotInfo) {
+  const sosRef = ref(db, `sos/${slotKey}_${Date.now()}`);
+  update(sosRef, {
+    slot: slotKey,
+    bookedById: slotInfo.bookedById || null,
+    status: slotInfo.status,
+    timestamp: new Date().toISOString()
+  }).then(() => {
+    alert(`⚠️ SOS triggered for ${slotKey}! Admins will be notified.`);
+  }).catch((err) => console.error("SOS failed:", err));
+}
 
 
 // -------------------
@@ -144,6 +192,10 @@ function renderSlot(slotKey, slotInfo, labelText, allowBooking) {
   parkingLot.appendChild(slot);
 }
 
+// Generate unique booking ID (example: timestamp + random)
+function generateBookingId() {
+  return "BOOK_" + Date.now() + "_" + Math.floor(Math.random() * 10000);
+}
 
 
 function handleSlotClick(slotKey, slotInfo) {
@@ -207,21 +259,30 @@ function showBookingPopup(slotKey, slotInfo) {
   });
 
   // Confirm booking
+  // Confirm booking
   card.querySelector("#confirmBooking").addEventListener("click", () => {
     const hours = parseInt(hoursInput.value, 10);
     const total = price * (rates[vehicle] || 1) * hours;
+
+    const bookingId = generateBookingId();
+
+    // Save locally
+    localStorage.setItem("bookingId", bookingId);
+    localStorage.setItem("bookingSlot", slotKey);
 
     const slotRef = ref(db, `parking/slots/${slotKey}`);
     update(slotRef, {
       status: "booked",
       bookedBy: vehicle,
+      bookedById: bookingId,   // 🔹 NEW field
       hours: hours,
       totalPrice: total
     }).then(() => {
-      alert(`Slot ${slotKey} booked!\nVehicle: ${vehicle}\nHours: ${hours}\nTotal: ₹${total}`);
+      alert(`Slot ${slotKey} booked!\nBooking ID: ${bookingId}\nVehicle: ${vehicle}\nHours: ${hours}\nTotal: ₹${total}`);
       document.body.removeChild(overlay);
     }).catch((err) => console.error("Booking failed:", err));
   });
+
 
   // Cancel popup
   card.querySelector("#cancelBooking").addEventListener("click", () => {

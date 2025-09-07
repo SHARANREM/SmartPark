@@ -202,21 +202,30 @@ function handleSlotClick(slotKey, slotInfo) {
   if (!slotInfo || slotInfo.status === "empty") {
     showBookingPopup(slotKey, slotInfo);
   } else if (slotInfo.status === "booked") {
-    const confirmCancel = confirm(`Slot ${slotKey} is booked.\nDo you want to cancel this booking?`);
+  const localBookingId = localStorage.getItem("bookingId");
+  const localSlot = localStorage.getItem("bookingSlot");
+
+  if (slotInfo.bookedById === localBookingId && slotKey === localSlot) {
+    const confirmCancel = confirm(`Do you want to cancel your booking for ${slotKey}?`);
     if (confirmCancel) {
       const slotRef = ref(db, `parking/slots/${slotKey}`);
       update(slotRef, {
         status: "empty",
         bookedBy: null,
+        bookedById: null,
         hours: null,
         totalPrice: null
       }).then(() => {
-        alert(`Booking for ${slotKey} has been cancelled.`);
+        localStorage.removeItem("bookingId");
+        localStorage.removeItem("bookingSlot");
+        alert(`Your booking for ${slotKey} has been cancelled.`);
       }).catch((err) => console.error("Cancel failed:", err));
     }
-  } else if (slotInfo.status === "occupied") {
-    alert("This slot is already full.");
+  } else {
+    alert("❌ You cannot cancel this booking. It was made by another user.");
   }
+}
+
 }
 
 // -------------------

@@ -86,14 +86,19 @@ function renderSlots(type) {
   }
 
   else if (type === 2) {
-    // Hospital slots (rows grow automatically)
-    let i = 1;
-    for (let slotKey in slotsData) {
-      const slotInfo = slotsData[slotKey];
-      renderSlot(slotKey, slotInfo, "H" + i, false); // false = no booking
-      i++;
-    }
+  // Hospital slots
+  let entries = Object.entries(slotsData);
+
+  // Sort by the `id` field inside each slot
+  entries.sort((a, b) => a[1].id - b[1].id);
+
+  for (let i = 0; i < entries.length; i++) {
+    const [slotKey, slotInfo] = entries[i];
+    renderSlot(slotKey, slotInfo, "H" + (i + 1), false); // no booking
   }
+}
+
+
 }
 
 function renderSlot(slotKey, slotInfo, labelText, allowBooking) {

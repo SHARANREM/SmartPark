@@ -33,7 +33,8 @@ const locations = [
         name: "SRM Hospital",
         desc: "This parking is based on the CCTV field parking.",
         lat: 12.821222,
-        lon: 80.049277
+        lon: 80.049277,
+        dbPath: "CCTV_parking"
     }
 ];
 
@@ -80,14 +81,7 @@ closeBtn.addEventListener('click', () => {
     sidebar.classList.remove('active');
 });
 
-// -------------------
-// Fetch parking data from Firebase
-// -------------------
-// -------------------
-// Fetch parking data from Firebase (real-time)
-// -------------------
 function fetchParkingData(nodePath, location) {
-    // Attach a real-time listener
     db.ref(nodePath).on('value', snapshot => {
         const data = snapshot.val();
 
@@ -97,31 +91,49 @@ function fetchParkingData(nodePath, location) {
             return;
         }
 
-        // Calculate occupied slots
+        // -------------------
+        // Calculate slots
+        // -------------------
+        let totalSlots = 0;
         let occupiedSlots = 0;
-        for (const slotKey in data.slots) {
-            if (data.slots[slotKey].status === "occupied") occupiedSlots++;
+
+        if (data.slots) {
+            totalSlots = Object.keys(data.slots).length; // count slots
+            for (const slotKey in data.slots) {
+                if (data.slots[slotKey].status === "occupied") {
+                    occupiedSlots++;
+                }
+            }
+        } else if (data.meta?.total_slots) {
+            // fallback (Tech Park style)
+            totalSlots = data.meta.total_slots;
+            occupiedSlots = data.meta.occupied ?? 0;
         }
 
-        const totalSlots = data.meta.total_slots;
         const freeSlots = totalSlots - occupiedSlots;
-        const price = data.others.price;
-        const type = data.others.type;
 
-        // Store in localStorage
-        localStorage.setItem('parking_price', price);
+        // -------------------
+        // Others (price optional, type required)
+        // -------------------
+        const type = data.others?.type ?? 0; // default CCTV
+        const price = data.others?.price;
+
+        if (price !== undefined) {
+            localStorage.setItem('parking_price', price);
+        }
         localStorage.setItem('parking_type', type);
 
-        // Build description
+        // -------------------
+        // Build UI description
+        // -------------------
         location.desc = `
             Total Slots: ${totalSlots} <br>
             Occupied Slots: ${occupiedSlots} <br>
             Free Slots: ${freeSlots} <br>
-            Price: ₹${price} <br>
             Type: ${type === 1 ? "Sensor-based" : "CCTV-based"}
+            ${price !== undefined ? `<br> Price: ₹${price}` : ""}
         `;
 
-        // Always show (open) sidebar, it will auto-update as DB changes
         showSidebar(location);
     });
 }

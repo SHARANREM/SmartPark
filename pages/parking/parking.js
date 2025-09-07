@@ -30,11 +30,26 @@ let slotsData = {};  // will store firebase data
 // -------------------
 // Load slots from Firebase
 // -------------------
-const slotsRef = ref(db, "parking/slots");
-onValue(slotsRef, (snapshot) => {
-  slotsData = snapshot.val() || {};
-  renderSlots(currentType);
+
+
+// Tech building (type 1)
+const parkingRef = ref(db, "parking/slots");
+onValue(parkingRef, (snapshot) => {
+  if (currentType === 1) {
+    slotsData = snapshot.val() || {};
+    renderSlots(1);
+  }
 });
+
+// Hospital (type 2)
+const hospitalRef = ref(db, "CCTV_parking/slots");
+onValue(hospitalRef, (snapshot) => {
+  if (currentType === 2) {
+    slotsData = snapshot.val() || {};
+    renderSlots(2);
+  }
+});
+
 
 // -------------------
 // Type Switching
@@ -62,41 +77,57 @@ function renderSlots(type) {
   parkingLot.innerHTML = "";
 
   if (type === 1) {
+    // Tech building slots
     for (let i = 1; i <= 8; i++) {
       const slotKey = "slot" + i;
       const slotInfo = slotsData[slotKey];
+      renderSlot(slotKey, slotInfo, "S" + i, true); // true = booking enabled
+    }
+  }
 
-      const slot = document.createElement("div");
-      slot.className = "slot";
-
-      let img = document.createElement("img");
-      let label = document.createElement("span");
-      label.textContent = "S" + i;
-
-      // Set icon based on status
-      if (slotInfo) {
-        if (slotInfo.status === "empty") {
-          img.src = "/assets/icons/emptycar.png";
-        } else if (slotInfo.status === "occupied") {
-          img.src = "/assets/icons/fullcar.png";
-        } else if (slotInfo.status === "booked") {
-          img.src = "/assets/icons/bookedcar.png";
-        } else {
-          img.src = "/assets/icons/emptycar.png";
-        }
-      } else {
-        img.src = "/assets/icons/emptycar.png";
-      }
-
-      // 🔹 Click handler
-      slot.addEventListener("click", () => handleSlotClick(slotKey, slotInfo));
-
-      slot.appendChild(img);
-      slot.appendChild(label);
-      parkingLot.appendChild(slot);
+  else if (type === 2) {
+    // Hospital slots (rows grow automatically)
+    let i = 1;
+    for (let slotKey in slotsData) {
+      const slotInfo = slotsData[slotKey];
+      renderSlot(slotKey, slotInfo, "H" + i, false); // false = no booking
+      i++;
     }
   }
 }
+
+function renderSlot(slotKey, slotInfo, labelText, allowBooking) {
+  const slot = document.createElement("div");
+  slot.className = "slot";
+
+  let img = document.createElement("img");
+  let label = document.createElement("span");
+  label.textContent = labelText;
+
+  if (slotInfo) {
+    if (slotInfo.status === "empty") {
+      img.src = "/assets/icons/emptycar.png";
+    } else if (slotInfo.status === "occupied") {
+      img.src = "/assets/icons/fullcar.png";
+    } else if (slotInfo.status === "booked") {
+      img.src = "/assets/icons/bookedcar.png";
+    } else {
+      img.src = "/assets/icons/emptycar.png";
+    }
+  } else {
+    img.src = "/assets/icons/emptycar.png";
+  }
+
+  // Only clickable for type 1
+  if (allowBooking) {
+    slot.addEventListener("click", () => handleSlotClick(slotKey, slotInfo));
+  }
+
+  slot.appendChild(img);
+  slot.appendChild(label);
+  parkingLot.appendChild(slot);
+}
+
 
 
 function handleSlotClick(slotKey, slotInfo) {

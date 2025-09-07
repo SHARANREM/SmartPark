@@ -75,7 +75,6 @@ window.addEventListener("DOMContentLoaded", () => {
 // -------------------
 function renderSlots(type) {
   parkingLot.innerHTML = "";
-
   if (type === 1) {
     // Tech building slots
     for (let i = 1; i <= 8; i++) {
@@ -84,19 +83,31 @@ function renderSlots(type) {
       renderSlot(slotKey, slotInfo, "S" + i, true); // true = booking enabled
     }
   }
-
+  
   else if (type === 2) {
-  // Hospital slots
-  let entries = Object.entries(slotsData);
+    // Hospital slots
 
-  // Sort by the `id` field inside each slot
-  entries.sort((a, b) => a[1].id - b[1].id);
+    // 🔹 Put static reference image above grid
+    const mapContainer = document.getElementById("mapContainer");
 
-  for (let i = 0; i < entries.length; i++) {
-    const [slotKey, slotInfo] = entries[i];
-    renderSlot(slotKey, slotInfo, "H" + (i + 1), false); // no booking
-  }
+    // Remove old image if any
+    mapContainer.innerHTML = "";
+
+    const refImg = document.createElement("img");
+    refImg.src = "/assets/snippet.png"; // replace with your actual image path
+    refImg.alt = "Hospital Parking Layout";
+    refImg.className = "parking-map";
+    mapContainer.appendChild(refImg);
+
+    let entries = Object.entries(slotsData);
+    entries.sort((a, b) => a[1].id - b[1].id);
+
+    for (let i = 0; i < entries.length; i++) {
+      const [slotKey, slotInfo] = entries[i];
+      renderSlot(slotKey, slotInfo, "S" + (i + 1), false);
+    }
 }
+
 
 
 }

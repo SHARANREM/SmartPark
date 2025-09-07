@@ -74,17 +74,16 @@ function handleBookingVerification(slotKey, slotInfo) {
   const localBookingId = localStorage.getItem("bookingId");
   const localSlot = localStorage.getItem("bookingSlot");
 
+  // 🔹 Only check if THIS device booked the slot
   if (slotInfo.bookedById === localBookingId && slotKey === localSlot) {
     const confirmUser = confirm(`We detected your slot ${slotKey} is now occupied.\nIs this you?`);
     if (!confirmUser) {
-      // If user says "Not me", raise SOS
       raiseSOS(slotKey, slotInfo);
     }
-  } else {
-    // If mismatch in ID → automatic SOS
-    raiseSOS(slotKey, slotInfo);
-  }
+  } 
+  // ❌ If not this user's booking, do nothing.
 }
+
 
 function raiseSOS(slotKey, slotInfo) {
   const sosRef = ref(db, `sos/${slotKey}_${Date.now()}`);
